@@ -4,13 +4,16 @@ API for client-server interaction provided.
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import enum
 import json
 import logging
 import pathlib
 import uuid
-from typing import Any
+from itertools import permutations
+from random import choice, sample
+from typing import Any, Callable, Generic, TypeVar
 
 import attrs
 import attrs.validators
@@ -74,18 +77,37 @@ class Difficulty(enum.Enum):
     Hard = 2
 
 
-Field = list[list[Num]]
+T = TypeVar("T")
+Board = list[list[Num | None]]
+FullBoard = list[list[Num]]
+BoardMask = list[list[bool]]
 
 
-def _len_9(_: Any, __: Any, value: Field) -> None:
-    if (
-        not isinstance(value, list)
-        or len(value) != 9
-        or any(not isinstance(sub, list) for sub in value)
-        or any(len(sub) != 9 for sub in value)
-        or any(not isinstance(e, Num) for sub in value for e in sub)
-    ):
-        raise ValueError("Sudoku field should be a 9x9 matrix of nums [1, 9]")
+@dataclasses.dataclass
+class _LP(Generic[T]):
+    pred: Callable[[T], bool] | None = None
+    size: int = -1
+
+    def __call__(self, value: list[T]) -> bool:
+        if not isinstance(value, list):
+            return False
+        if self.size != -1 and len(value) != self.size:
+            return False
+        if self.pred is None:
+            return True
+        return all(self.pred(v) for v in value)
+
+
+def _pv(pred: Callable[[T], bool]) -> Callable[[Any, Any, T], None]:
+    def validator(_: Any, __: Any, value: T) -> None:
+        if not pred(value):
+            raise ValueError()
+
+    return validator
+
+
+_pred_9x9: Callable[[list[list]], bool] = _LP(size=9, pred=_LP(size=9))
+_pred_list_9x9: Callable[[list[list[list]]], bool] = _LP(pred=_pred_9x9)
 
 
 @attrs.define(slots=True, frozen=True)
@@ -95,7 +117,7 @@ class SessionSave:
     name: str
     seed: int
     difficulty: Difficulty
-    starting_field: Field = attrs.field(validator=[_len_9])  # can be displayed on "saves" page
+    starting_field: Board = attrs.field(validator=[_pv(_pred_9x9)])
     session_id: str = str(uuid.UUID())
     timestamp: datetime.datetime = datetime.datetime.now()
 
@@ -127,8 +149,10 @@ class SessionSave:
 class SessionHistory:
     """Representation of one game history."""
 
-    starting_field: Field = attrs.field(validator=[_len_9])
-    # TODO
+    full_board: FullBoard = attrs.field(validator=[_pv(_pred_9x9)])
+    initial: BoardMask = attrs.field(validator=[_pv(_pred_9x9)])
+    boards: list[Board] = attrs.field(validator=[_pv(_pred_list_9x9)])
+    turn: int
 
     @staticmethod
     def _from_file(path: pathlib.Path) -> SessionHistory:
@@ -248,9 +272,8 @@ class SudokuServer:
 
         Typically used in 'New Game'.
         """
-        field = self._generate_starting_field()
-        save = SessionSave(name=name, seed=seed, difficulty=difficulty, starting_field=field)
-        history = SessionHistory(starting_field=field)
+        history = self._generate_session_history()
+        save = SessionSave(name=name, seed=seed, difficulty=difficulty, starting_field=history.boards[0])
         session = SudokuSession(save, history)
         self._save_session_as_file(session)
         return session
