@@ -19,6 +19,8 @@ import attrs
 import attrs.validators
 import cattrs
 import cattrs.errors
+import numpy as np
+import numpy.typing as npt
 import tomli
 import tomli_w
 
@@ -264,8 +266,64 @@ class SudokuServer:
         # noinspection PyProtectedMember
         session.save._save_as_file(self._session_save_path(sid))
 
-    def _generate_starting_field(self) -> Field:
-        raise NotImplementedError
+    @staticmethod
+    def _generate_full_board() -> FullBoard:
+        """Generate full board."""
+        f: npt.NDArray[np.int_] = np.zeros((9, 9), int)
+
+        def is_correct(field: npt.NDArray[np.int_]) -> bool:
+            r = bool(np.unique(field).size == 9 and np.all(np.unique(field) == np.arange(9) + 1)) and \
+                all(np.all(np.unique(field[_i, :], return_counts=True)[1] == 1) for _i in range(9)) and \
+                all(np.all(np.unique(field[:, _i], return_counts=True)[1] == 1) for _i in range(9))
+            return r
+
+        # Creating 1, 5 and 9 boxes
+        for i in (0, 3, 6):
+            tmp = np.asarray(sample((1, 2, 3, 4, 5, 6, 7, 8, 9), k=9))
+            tmp = tmp.reshape((3, 3))
+            f[i:i + 3, i:i + 3] = tmp
+
+        # Iteratively trying to generate boxes such that sudoku exists
+        res: npt.NDArray[np.int_] = f.copy()
+        while not is_correct(res):
+            res = f.copy()
+
+            # Trying to generate valid 2, 6 and 7 boxes
+            for i, j in ((0, 3), (3, 6), (6, 0)):
+                while 0 in res[i:i + 3, j:j + 3]:
+                    box_nums = set(range(1, 10))
+                    for k in range(3):
+                        for m in range(3):
+                            avail = list(filter(lambda x: x not in res[i + k, :] and x not in res[:, j + m], box_nums))
+                            if len(avail) > 0:
+                                res[i + k, j + m] = choice(avail)
+                            box_nums.difference_update({res[i + k, j + m]})
+
+            # Trying to deduce 3, 4 and 8 boxes from others
+            for i, j in ((0, 6), (3, 0), (6, 3)):
+                for k in range(3):
+                    for m in range(3):
+                        for number in range(1, 10):
+                            # Box cannot be deduced if any cell has no numbers available - it'll be 0
+                            if number not in res[i + k, :] and number not in res[:, j + m]:
+                                res[i + k, j + m] = number
+
+        return [[Num(res[row][col]) for col in range(9)] for row in range(9)]
+
+    @staticmethod
+    def _generate_initial_mask() -> BoardMask:
+        """Generate initial state of board."""
+        # FIXME: mocked initial states
+        return [[row // 3 != col // 3 for col in range(9)] for row in range(9)]
+
+    def _generate_session_history(self) -> SessionHistory:
+        full_board = self._generate_full_board()
+        initial = self._generate_initial_mask()
+        boards: list[Board] = [[[full_board[r][c] if initial[r][c] else None for c in range(9)] for r in range(9)]]
+        turn = -1
+
+        history = SessionHistory(full_board, initial, boards, turn)
+        return history
 
     def generate_session(self, name: str, seed: int = 0, difficulty: Difficulty = Difficulty.Medium) -> SudokuSession:
         """Generate session.
