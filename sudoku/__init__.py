@@ -4,18 +4,23 @@ API for client-server interaction provided.
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import enum
 import json
 import logging
 import pathlib
 import uuid
-from typing import Any
+from itertools import permutations
+from random import choice, sample
+from typing import Any, Callable, Generic, TypeVar
 
 import attrs
 import attrs.validators
 import cattrs
 import cattrs.errors
+import numpy as np
+import numpy.typing as npt
 import tomli
 import tomli_w
 
@@ -74,18 +79,37 @@ class Difficulty(enum.Enum):
     Hard = 2
 
 
-Field = list[list[Num]]
+T = TypeVar("T")
+Board = list[list[Num | None]]
+FullBoard = list[list[Num]]
+BoardMask = list[list[bool]]
 
 
-def _len_9(_: Any, __: Any, value: Field) -> None:
-    if (
-        not isinstance(value, list)
-        or len(value) != 9
-        or any(not isinstance(sub, list) for sub in value)
-        or any(len(sub) != 9 for sub in value)
-        or any(not isinstance(e, Num) for sub in value for e in sub)
-    ):
-        raise ValueError("Sudoku field should be a 9x9 matrix of nums [1, 9]")
+@dataclasses.dataclass
+class _LP(Generic[T]):
+    pred: Callable[[T], bool] | None = None
+    size: int = -1
+
+    def __call__(self, value: list[T]) -> bool:
+        if not isinstance(value, list):
+            return False
+        if self.size != -1 and len(value) != self.size:
+            return False
+        if self.pred is None:
+            return True
+        return all(self.pred(v) for v in value)
+
+
+def _pv(pred: Callable[[T], bool]) -> Callable[[Any, Any, T], None]:
+    def validator(_: Any, __: Any, value: T) -> None:
+        if not pred(value):
+            raise ValueError()
+
+    return validator
+
+
+_pred_9x9: Callable[[list[list]], bool] = _LP(size=9, pred=_LP(size=9))
+_pred_list_9x9: Callable[[list[list[list]]], bool] = _LP(pred=_pred_9x9)
 
 
 @attrs.define(slots=True, frozen=True)
@@ -95,7 +119,7 @@ class SessionSave:
     name: str
     seed: int
     difficulty: Difficulty
-    starting_field: Field = attrs.field(validator=[_len_9])  # can be displayed on "saves" page
+    starting_field: Board = attrs.field(validator=[_pv(_pred_9x9)])
     session_id: str = str(uuid.UUID())
     timestamp: datetime.datetime = datetime.datetime.now()
 
@@ -127,8 +151,10 @@ class SessionSave:
 class SessionHistory:
     """Representation of one game history."""
 
-    starting_field: Field = attrs.field(validator=[_len_9])
-    # TODO
+    full_board: FullBoard = attrs.field(validator=[_pv(_pred_9x9)])
+    initial: BoardMask = attrs.field(validator=[_pv(_pred_9x9)])
+    boards: list[Board] = attrs.field(validator=[_pv(_pred_list_9x9)])
+    turn: int
 
     @staticmethod
     def _from_file(path: pathlib.Path) -> SessionHistory:
@@ -177,40 +203,95 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        raise NotImplementedError
+        if self.history.turn + len(self.history.boards) == 0:
+            return False
+        self.history.turn -= 1
+        return True
 
     def redo(self) -> bool:
         """Redo last turn.
 
         Returns: true if the turn was successful, false otherwise
         """
-        raise NotImplementedError
+        if self.history.turn == -1:
+            return False
+        self.history.turn += 1
+        return True
 
     def set_num(self, pos: Pos, num: Num) -> bool:
         """Set the point at 'pos' value to 'num'.
 
         Returns: true if the turn was successful, false otherwise
         """
-        raise NotImplementedError
+        if self.history.initial[pos.x - 1][pos.y - 1]:
+            return False
+        if self.history.turn != -1:
+            del self.history.boards[self.history.turn + 1:]
+            self.history.turn = -1
+        self.history.boards.append([
+            [self.history.boards[self.history.turn][row][col]
+             if pos.x - 1 != row or pos.y - 1 != col
+             else num
+             for col in range(9)] for row in range(9)
+        ])
+        return True
 
     def del_num(self, pos: Pos) -> bool:
         """Unset the point at 'pos'.
 
         Returns: true if the turn was successful, false otherwise
         """
-        raise NotImplementedError
+        if self.history.initial[pos.x - 1][pos.y - 1] \
+                or self.history.boards[self.history.turn][pos.x - 1][pos.y - 1] is None:
+            return False
+        if self.history.turn != -1:
+            del self.history.boards[self.history.turn + 1:]
+            self.history.turn = -1
+        self.history.boards.append([
+            [self.history.boards[self.history.turn][row][col]
+             if pos.x - 1 != row or pos.y - 1 != col
+             else None
+             for col in range(9)] for row in range(9)
+        ])
+        return True
 
-    def get_errors(self) -> list[list[bool]]:
+    def get_errors(self) -> BoardMask:
         """Get matrix of errors on board."""
-        raise NotImplementedError
+        errors = [[False for __ in range(9)] for __ in range(9)]
+        board = self.history.boards[-1]
+        # Check rows and cols
+        for i in range(9):
+            for j1, j2 in permutations(range(9), 2):
+                if board[i][j1] == board[i][j2]:
+                    errors[i][j1] = True
+                    errors[i][j2] = True
+                if board[j1][i] == board[j2][i]:
+                    errors[j1][i] = True
+                    errors[j2][i] = True
+        # Check boxes
+        for box in range(9):
+            for cell1, cell2 in permutations(range(9), 2):
+                r1: int = 3 * (box // 3) + cell1 // 3
+                r2: int = 3 * (box // 3) + cell2 // 3
+                c1: int = 3 * (box % 3) + cell1 % 3
+                c2: int = 3 * (box % 3) + cell2 % 3
+                if board[r1][c1] == board[r2][c2]:
+                    errors[r1][c1] = True
+                    errors[r2][c2] = True
+        # Mask errors for unset cells
+        for r in range(9):
+            for c in range(9):
+                if board[r][c] is None:
+                    errors[r][c] = False
+        return errors
 
     def get_initials(self) -> list[list[bool]]:
         """Get matrix of initials on board."""
-        raise NotImplementedError
+        return self.history.initial.copy()
 
     def get_board(self) -> list[list[Num | None]]:
         """Get matrix of board values."""
-        raise NotImplementedError
+        return self.history.boards[self.history.turn].copy()
 
 
 class SudokuServer:
@@ -240,17 +321,72 @@ class SudokuServer:
         # noinspection PyProtectedMember
         session.save._save_as_file(self._session_save_path(sid))
 
-    def _generate_starting_field(self) -> Field:
-        raise NotImplementedError
+    @staticmethod
+    def _generate_full_board() -> FullBoard:
+        """Generate full board."""
+        f: npt.NDArray[np.int_] = np.zeros((9, 9), int)
+
+        def is_correct(field: npt.NDArray[np.int_]) -> bool:
+            r = bool(np.unique(field).size == 9 and np.all(np.unique(field) == np.arange(9) + 1)) and \
+                all(np.all(np.unique(field[_i, :], return_counts=True)[1] == 1) for _i in range(9)) and \
+                all(np.all(np.unique(field[:, _i], return_counts=True)[1] == 1) for _i in range(9))
+            return r
+
+        # Creating 1, 5 and 9 boxes
+        for i in (0, 3, 6):
+            tmp = np.asarray(sample((1, 2, 3, 4, 5, 6, 7, 8, 9), k=9))
+            tmp = tmp.reshape((3, 3))
+            f[i:i + 3, i:i + 3] = tmp
+
+        # Iteratively trying to generate boxes such that sudoku exists
+        res: npt.NDArray[np.int_] = f.copy()
+        while not is_correct(res):
+            res = f.copy()
+
+            # Trying to generate valid 2, 6 and 7 boxes
+            for i, j in ((0, 3), (3, 6), (6, 0)):
+                while 0 in res[i:i + 3, j:j + 3]:
+                    box_nums = set(range(1, 10))
+                    for k in range(3):
+                        for m in range(3):
+                            avail = list(filter(lambda x: x not in res[i + k, :] and x not in res[:, j + m], box_nums))
+                            if len(avail) > 0:
+                                res[i + k, j + m] = choice(avail)
+                            box_nums.difference_update({res[i + k, j + m]})
+
+            # Trying to deduce 3, 4 and 8 boxes from others
+            for i, j in ((0, 6), (3, 0), (6, 3)):
+                for k in range(3):
+                    for m in range(3):
+                        for number in range(1, 10):
+                            # Box cannot be deduced if any cell has no numbers available - it'll be 0
+                            if number not in res[i + k, :] and number not in res[:, j + m]:
+                                res[i + k, j + m] = number
+
+        return [[Num(res[row][col]) for col in range(9)] for row in range(9)]
+
+    @staticmethod
+    def _generate_initial_mask() -> BoardMask:
+        """Generate initial state of board."""
+        # FIXME: mocked initial states
+        return [[row // 3 != col // 3 for col in range(9)] for row in range(9)]
+
+    def _generate_session_history(self) -> SessionHistory:
+        full_board = self._generate_full_board()
+        initial = self._generate_initial_mask()
+        boards: list[Board] = [[[full_board[r][c] if initial[r][c] else None for c in range(9)] for r in range(9)]]
+        turn = -1
+
+        history = SessionHistory(full_board, initial, boards, turn)
+        return history
 
     def generate_session(self, name: str, seed: int = 0, difficulty: Difficulty = Difficulty.Medium) -> SudokuSession:
         """Generate session.
 
         Typically used in 'New Game'.
         """
-        field = self._generate_starting_field()
-        save = SessionSave(name=name, seed=seed, difficulty=difficulty, starting_field=field)
-        history = SessionHistory(starting_field=field)
+        history = self._generate_session_history()
+        save = SessionSave(name=name, seed=seed, difficulty=difficulty, starting_field=history.boards[0])
         session = SudokuSession(save, history)
         self._save_session_as_file(session)
         return session
