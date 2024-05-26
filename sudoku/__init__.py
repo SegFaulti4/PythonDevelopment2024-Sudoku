@@ -566,6 +566,14 @@ class SudokuServer:
             saves.append(save)
         return saves
 
+    def delete_save(self, save: SessionSave) -> None:
+        """Delete save.
+
+        Completely deletes save. It cannot be restored in any way.
+        """
+        self._session_history_path(save.session_id).unlink()
+        self._session_save_path(save.session_id).unlink()
+
     def load_session(self, save: SessionSave) -> SudokuSession:
         """Load session from save.
 
