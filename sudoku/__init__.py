@@ -482,9 +482,6 @@ class SudokuServer:
             solvable = SudokuServer._solve(try_board, difficulty)
         return [[(i, j) in visible for j in range(9)] for i in range(9)]
 
-        # FIXME: mocked initial states
-        return [[row // 3 != col // 3 for col in range(9)] for row in range(9)]
-
     @staticmethod
     def _calc_seed(board: FullBoard, initial: BoardMask) -> str:
         seed = ''
