@@ -13,7 +13,7 @@ import pathlib
 import uuid
 from itertools import permutations
 from math import factorial
-from random import choice, sample, getrandbits
+from random import choice, getrandbits, sample
 from random import seed as randseed
 from typing import Any, Callable, Generic, TypeVar
 
@@ -117,7 +117,7 @@ class SessionSave:
     """Representation of session metadata."""
 
     name: str
-    seed: str | None
+    seed: str
     difficulty: Difficulty
     starting_field: Board = attrs.field(validator=[_pv(_pred_9x9)])
     session_id: str
@@ -340,7 +340,7 @@ class SudokuServer:
             for i, j, box_seed_str in zip((0, 0, 3, 3, 6, 6), (0, 3, 3, 6, 0, 6), seed_boxes):
                 if len(box_seed_str) != 4:
                     raise SudokuError("Malformed seed")
-                seed_nums = list(map(lambda x: ord(x) - ord('0') if x.isdigit() else ord(x) - ord('a') + 10, 
+                seed_nums = list(map(lambda x: ord(x) - ord('0') if x.isdigit() else ord(x) - ord('a') + 10,
                                      box_seed_str))
                 box_seed = sum((32**(3-i) * seed_nums[i]) for i in range(4))
                 numbers = list(range(1, 10))
