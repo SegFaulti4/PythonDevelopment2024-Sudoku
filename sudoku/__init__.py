@@ -12,7 +12,9 @@ import logging
 import pathlib
 import uuid
 from itertools import permutations
-from random import choice, sample
+from math import factorial
+from random import choice, getrandbits, sample
+from random import seed as randseed
 from typing import Any, Callable, Generic, TypeVar
 
 import attrs
@@ -21,8 +23,6 @@ import cattrs
 import cattrs.errors
 import numpy as np
 import numpy.typing as npt
-import tomli
-import tomli_w
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -71,7 +71,7 @@ class Pos:
     y: Num
 
 
-class Difficulty(enum.Enum):
+class Difficulty(enum.IntEnum):
     """Difficulty of game."""
 
     Easy = 0
@@ -117,17 +117,17 @@ class SessionSave:
     """Representation of session metadata."""
 
     name: str
-    seed: int
+    seed: str
     difficulty: Difficulty
     starting_field: Board = attrs.field(validator=[_pv(_pred_9x9)])
-    session_id: str = str(uuid.UUID())
-    timestamp: datetime.datetime = datetime.datetime.now()
+    session_id: str
+    timestamp: str = datetime.datetime.now().isoformat()
 
     @staticmethod
     def _from_file(path: pathlib.Path) -> SessionSave:
         try:
-            with open(path, "rb") as in_f:
-                data = tomli.load(in_f)
+            with open(path, "r") as in_f:
+                data = json.load(in_f)
             save = cattrs.structure(data, SessionSave)
             return save
         except cattrs.errors.ClassValidationError as exc:
@@ -140,8 +140,8 @@ class SessionSave:
     def _save_as_file(self, path: pathlib.Path) -> None:
         data = attrs.asdict(self)
         try:
-            with open(path, "wb") as out_f:
-                tomli_w.dump(data, out_f)
+            with open(path, "w") as out_f:
+                json.dump(data, out_f)
         except Exception as exc:
             logger.warning(exc)
             raise SudokuFileError("Failed to save session metadata file", path=path)
@@ -307,12 +307,13 @@ class SudokuServer:
         """Server initializer."""
         self._config_directory.mkdir(parents=True, exist_ok=True)
         self._saves_directory.mkdir(parents=True, exist_ok=True)
+        randseed()
 
     def _session_history_path(self, session_id: str) -> pathlib.Path:
-        return self._saves_directory / (session_id + ".json")
+        return self._saves_directory / (session_id + "-history.json")
 
     def _session_save_path(self, session_id: str) -> pathlib.Path:
-        return self._saves_directory / (session_id + ".toml")
+        return self._saves_directory / (session_id + "-save.json")
 
     def _save_session_as_file(self, session: SudokuSession) -> None:
         sid = session.save.session_id
@@ -322,15 +323,42 @@ class SudokuServer:
         session.save._save_as_file(self._session_save_path(sid))
 
     @staticmethod
-    def _generate_full_board() -> FullBoard:
+    def _generate_full_board(seed: str | None) -> FullBoard:
         """Generate full board."""
-        f: npt.NDArray[np.int_] = np.zeros((9, 9), int)
-
         def is_correct(field: npt.NDArray[np.int_]) -> bool:
             r = bool(np.unique(field).size == 9 and np.all(np.unique(field) == np.arange(9) + 1)) and \
                 all(np.all(np.unique(field[_i, :], return_counts=True)[1] == 1) for _i in range(9)) and \
                 all(np.all(np.unique(field[:, _i], return_counts=True)[1] == 1) for _i in range(9))
             return r
+
+        f: npt.NDArray[np.int_] = np.zeros((9, 9), int)
+
+        if seed is not None:
+            *seed_boxes, seed_initial = seed.split('-')
+            if len(seed_initial) != (81 + 4) // 5 or len(seed_boxes) != 6:
+                raise SudokuError("Malformed seed")
+            for i, j, box_seed_str in zip((0, 0, 3, 3, 6, 6), (0, 3, 3, 6, 0, 6), seed_boxes):
+                if len(box_seed_str) != 4:
+                    raise SudokuError("Malformed seed")
+                seed_nums = list(map(lambda x: ord(x) - ord('0') if x.isdigit() else ord(x) - ord('a') + 10,
+                                     box_seed_str))
+                box_seed = sum((32**(3-i) * seed_nums[i]) for i in range(4))
+                numbers = list(range(1, 10))
+                for k in range(8, 0, -1):
+                    f[i + (8-k)//3, j + (8-k)%3] = numbers.pop(box_seed//factorial(k))
+                    box_seed = box_seed % factorial(k)
+                f[i + 2, j + 2] = numbers[0]
+            for i, j in ((0, 6), (3, 0), (6, 3)):
+                for k in range(3):
+                    for m in range(3):
+                        for number in range(1, 10):
+                            # Box cannot be deduced if any cell has no numbers available - it'll be 0
+                            if number not in f[i + k, :] and number not in f[:, j + m]:
+                                f[i + k, j + m] = number
+            if not is_correct(f):
+                raise SudokuError("Malformed seed")
+            return [[Num(f[row][col]) for col in range(9)] for row in range(9)]
+
 
         # Creating 1, 5 and 9 boxes
         for i in (0, 3, 6):
@@ -366,27 +394,69 @@ class SudokuServer:
         return [[Num(res[row][col]) for col in range(9)] for row in range(9)]
 
     @staticmethod
-    def _generate_initial_mask() -> BoardMask:
+    def _generate_initial_mask(board: FullBoard, seed: str | None) -> BoardMask:
         """Generate initial state of board."""
         # FIXME: mocked initial states
         return [[row // 3 != col // 3 for col in range(9)] for row in range(9)]
 
-    def _generate_session_history(self) -> SessionHistory:
-        full_board = self._generate_full_board()
-        initial = self._generate_initial_mask()
+    @staticmethod
+    def _calc_seed(board: FullBoard, initial: BoardMask) -> str:
+        seed = ''
+        digits = '0123456789abcdefghijklmnopqrstuvwxyz'
+        for i, j in ((0, 0), (0, 3), (3, 3), (3, 6), (6, 0), (6, 6)):
+            flat_box = []
+            for ii in range(3):
+                for jj in range(3):
+                    flat_box.append(board[i+ii][j+jj])
+            invs = [sum(map(lambda x: flat_box[k] > x, flat_box[k+1:])) for k in range(9)]
+            box_seed = 0
+            for k in range(9):
+                box_seed += invs[k] * factorial(8-k)
+            seed_digits = []
+            for _ in range(4):
+                seed_digits.append(box_seed % 32)
+                box_seed //= 32
+            seed_digits.reverse()
+            seed += ''.join([digits[k] for k in seed_digits])
+            seed += '-'
+        cur = 0
+        cnt = 0
+        for i in range(9):
+            for j in range(9):
+                cur  = 2 * cur + initial[i][j]
+                cnt += 1
+                if cnt == 5:
+                    seed += digits[cur]
+                    cnt = 0
+                    cur = 0
+        if cnt != 0:
+            seed += digits[cur]
+        return seed
+
+
+    @staticmethod
+    def _generate_session_history(seed: str | None) -> SessionHistory:
+        full_board = SudokuServer._generate_full_board(seed)
+        initial = SudokuServer._generate_initial_mask(full_board, seed=seed)
         boards: list[Board] = [[[full_board[r][c] if initial[r][c] else None for c in range(9)] for r in range(9)]]
         turn = -1
 
         history = SessionHistory(full_board, initial, boards, turn)
         return history
 
-    def generate_session(self, name: str, seed: int = 0, difficulty: Difficulty = Difficulty.Medium) -> SudokuSession:
+    def generate_session(self,
+                         name: str,
+                         seed: str | None = None,
+                         difficulty: Difficulty = Difficulty.Medium) -> SudokuSession:
         """Generate session.
 
         Typically used in 'New Game'.
         """
-        history = self._generate_session_history()
-        save = SessionSave(name=name, seed=seed, difficulty=difficulty, starting_field=history.boards[0])
+        history = SudokuServer._generate_session_history(seed=seed)
+        if seed is None:
+            seed = SudokuServer._calc_seed(history.full_board, history.initial)
+        save = SessionSave(name=name, session_id=str(uuid.UUID(int=int(getrandbits(128)), version=4)), seed=seed,
+                           difficulty=difficulty, starting_field=history.boards[0])
         session = SudokuSession(save, history)
         self._save_session_as_file(session)
         return session
@@ -396,7 +466,7 @@ class SudokuServer:
 
         Typically used in 'Save'.
         """
-        kwargs = attrs.asdict(session.save) | {"timestamp": datetime.datetime.now()}
+        kwargs = attrs.asdict(session.save) | {"timestamp": datetime.datetime.now().isoformat()}
         new_save = SessionSave(**kwargs)
         session.save = new_save
         self._save_session_as_file(session)
@@ -407,7 +477,7 @@ class SudokuServer:
         Typically used in some kind of 'Continue' menu.
         """
         saves: list[SessionSave] = []
-        for save_file in self._saves_directory.glob("*.toml"):
+        for save_file in self._saves_directory.glob("*-save.json"):
             # noinspection PyProtectedMember
             save = SessionSave._from_file(save_file)
             saves.append(save)
