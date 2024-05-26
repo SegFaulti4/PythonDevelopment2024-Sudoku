@@ -15,7 +15,7 @@ from itertools import permutations
 from math import factorial
 from random import choice, getrandbits, sample
 from random import seed as randseed
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, cast
 
 import attrs
 import attrs.validators
@@ -394,8 +394,94 @@ class SudokuServer:
         return [[Num(res[row][col]) for col in range(9)] for row in range(9)]
 
     @staticmethod
-    def _generate_initial_mask(board: FullBoard, seed: str | None) -> BoardMask:
+    def _solve(board: Board, difficulty: Difficulty) -> bool:
+        marks = [[list(range(1, 10)) for j in range(9)] for i in range(9)]
+        def unmark(i: int, j: int) -> None:
+            val: int = cast(int, board[i][j])
+            for k in [*range(j)] + [*range(j+1, 9)]:
+                marks[i][k].remove(val) if val in marks[i][k] else None
+            for k in [*range(i)] + [*range(i+1, 9)]:
+                marks[k][j].remove(val) if val in marks[k][j] else None
+            for k in range(9):
+                if val in marks[3*(i//3) + k//3][3*(j//3) + k%3]:
+                    marks[3*(i//3) + k//3][3*(j//3) + k%3].remove(val)
+            marks[i][j] = []
+
+        for i, j in ((x, y) for x in range(9) for y in range(9)):
+            if board[i][j] is not None:
+                unmark(i, j)
+        changed = True
+        while changed:
+            changed = False
+            # Techniques here
+
+            # 1) Easy technique: naked single
+            for i, j in ((x, y) for x in range(9) for y in range(9)):
+                if len(marks[i][j]) == 1:
+                    board[i][j] = Num(marks[i][j][0])
+                    unmark(i, j)
+                    changed = True
+            # 2) Easy technique: hidden single
+            for num in range(1, 10):
+                for row in range(9):
+                    if sum(num in marks[row][i] for i in range(9)) == 1:
+                        for i in range(9):
+                            if num in marks[row][i]:
+                                board[row][i] = Num(num)
+                                unmark(row, i)
+                                changed = True
+                for col in range(9):
+                    if sum(num in marks[i][col] for i in range(9)) == 1:
+                        for i in range(9):
+                            if num in marks[i][col]:
+                                board[i][col] = Num(num)
+                                unmark(i, col)
+                                changed = True
+                for bl in range(9):
+                    if sum(num in marks[3*(bl//3) + i//3][3*(bl%3) + i%3] for i in range(9)) == 1:
+                        for i in range(9):
+                            if num in marks[3*(bl//3) + i//3][3*(bl%3) + i%3]:
+                                board[3*(bl//3) + i//3][3*(bl%3) + i%3] = Num(num)
+                                unmark(3*(bl//3) + i//3, 3*(bl%3) + i%3)
+                                changed = True
+
+        if all(map(all, board)):
+            return True
+        return False
+
+    @staticmethod
+    def _generate_initial_mask(board: FullBoard, seed: str | None, difficulty: Difficulty) -> BoardMask:
         """Generate initial state of board."""
+        if seed is not None:
+            *_, initial_seed = seed.split('-')
+            if len(initial_seed) != 17:
+                raise SudokuError("Malformed seed")
+            res = []
+            for i in range(16):
+                val = int(initial_seed[i], base=32)
+                res += list(map(lambda x: x == '1', f'{val:05b}'))
+            if initial_seed[16] == '0':
+                res += [False,]
+            elif initial_seed[16] == '1':
+                res += [True,]
+            else:
+                raise SudokuError("Malformed seed")
+            return list(res[i:i+9] for i in range(0, 81, 9))
+
+        samples: int = 0
+        if difficulty == Difficulty.Easy:
+            samples = 40
+        elif difficulty == Difficulty.Medium:
+            samples = 35
+        else:
+            samples = 30
+        solvable = False
+        while not solvable:
+            visible: list[tuple[int, int]] = sample(list((x, y) for x in range(9) for y in range(9)), k=samples)
+            try_board: Board = [[board[i][j] if (i, j) in visible else None for j in range(9)] for i in range(9)]
+            solvable = SudokuServer._solve(try_board, difficulty)
+        return [[(i, j) in visible for j in range(9)] for i in range(9)]
+
         # FIXME: mocked initial states
         return [[row // 3 != col // 3 for col in range(9)] for row in range(9)]
 
@@ -435,9 +521,9 @@ class SudokuServer:
 
 
     @staticmethod
-    def _generate_session_history(seed: str | None) -> SessionHistory:
+    def _generate_session_history(seed: str | None, difficulty: Difficulty) -> SessionHistory:
         full_board = SudokuServer._generate_full_board(seed)
-        initial = SudokuServer._generate_initial_mask(full_board, seed=seed)
+        initial = SudokuServer._generate_initial_mask(full_board, seed=seed, difficulty=difficulty)
         boards: list[Board] = [[[full_board[r][c] if initial[r][c] else None for c in range(9)] for r in range(9)]]
         turn = -1
 
@@ -452,7 +538,7 @@ class SudokuServer:
 
         Typically used in 'New Game'.
         """
-        history = SudokuServer._generate_session_history(seed=seed)
+        history = SudokuServer._generate_session_history(seed=seed, difficulty=difficulty)
         if seed is None:
             seed = SudokuServer._calc_seed(history.full_board, history.initial)
         save = SessionSave(name=name, session_id=str(uuid.UUID(int=int(getrandbits(128)), version=4)), seed=seed,
