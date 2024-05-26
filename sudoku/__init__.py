@@ -189,6 +189,7 @@ class SudokuSession:
 
     save: SessionSave
     history: SessionHistory
+    win_flag: bool
 
     def __init__(self, save: SessionSave, history: SessionHistory) -> None:
         """Game initializer.
@@ -197,13 +198,21 @@ class SudokuSession:
         """
         self.save = save
         self.history = history
+        self.win_flag = False
+
+    def win(self) -> bool:
+        """Check is the game ended.
+
+        If True, no operation on session is valid except win()
+        """
+        return self.win_flag
 
     def undo(self) -> bool:
         """Undo last turn.
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.turn + len(self.history.boards) == 0:
+        if self.win_flag or self.history.turn + len(self.history.boards) == 0:
             return False
         self.history.turn -= 1
         return True
@@ -213,7 +222,7 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.turn == -1:
+        if self.win_flag or self.history.turn == -1:
             return False
         self.history.turn += 1
         return True
@@ -223,7 +232,7 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.initial[pos.x - 1][pos.y - 1]:
+        if self.win_flag or self.history.initial[pos.x - 1][pos.y - 1]:
             return False
         if self.history.turn != -1:
             del self.history.boards[self.history.turn + 1:]
@@ -234,6 +243,8 @@ class SudokuSession:
              else num
              for col in range(9)] for row in range(9)
         ])
+        if self.history.boards[self.history.turn] == self.history.full_board:
+            self.win_flag = True
         return True
 
     def del_num(self, pos: Pos) -> bool:
@@ -241,7 +252,7 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.initial[pos.x - 1][pos.y - 1] \
+        if self.win_flag or self.history.initial[pos.x - 1][pos.y - 1] \
                 or self.history.boards[self.history.turn][pos.x - 1][pos.y - 1] is None:
             return False
         if self.history.turn != -1:
@@ -258,6 +269,8 @@ class SudokuSession:
     def get_errors(self) -> BoardMask:
         """Get matrix of errors on board."""
         errors = [[False for __ in range(9)] for __ in range(9)]
+        if self.win_flag:
+            return errors
         board = self.history.boards[-1]
         # Check rows and cols
         for i in range(9):
@@ -549,6 +562,9 @@ class SudokuServer:
 
         Typically used in 'Save'.
         """
+        if session.win_flag:
+            self.delete_save(session.save)
+            return
         kwargs = attrs.asdict(session.save) | {"timestamp": datetime.datetime.now().isoformat()}
         new_save = SessionSave(**kwargs)
         session.save = new_save
