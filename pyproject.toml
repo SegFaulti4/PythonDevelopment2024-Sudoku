@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "sudoku"
+name = "PythonDevelopment2024-Sudoku"
 version = "0.0.0"
 description = ""
 authors = [
@@ -7,6 +7,10 @@ authors = [
     #"Winking-maniac gkgim@yandex.ru",
 ]
 readme = "README.md"
+packages = [
+    {include = "./sudoku"},
+    {include = "./sudoku_tui"}
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -81,9 +85,6 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = false
-
-[tool.ruff.lint.per-file-ignores]
-"sudoku/__init__.py" = ["F401"]
 
 [build-system]
 requires = ["poetry-core"]
