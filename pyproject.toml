@@ -1,18 +1,23 @@
 [tool.poetry]
-name = "pythondevelopment2024-sudoku"
+name = "PythonDevelopment2024-Sudoku"
 version = "0.0.0"
 description = ""
 authors = [
-    "SegFaulti4 makar.popov01@mail.ru",
-    "Winking-maniac gkgim@yandex.ru",
+    #"SegFaulti4 makar.popov01@mail.ru",
+    #"Winking-maniac gkgim@yandex.ru",
 ]
 readme = "README.md"
+packages = [
+    {include = "./sudoku"},
+    {include = "./sudoku_tui"}
+]
 
 [tool.poetry.dependencies]
 python = "^3.10"
 attrs = "^23.2.0"
 cattrs = "^23.2.3"
 numpy = "^1.26.4"
+asciimatics = "^1.15.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.0"
@@ -31,6 +36,7 @@ follow_imports = "normal"
 check_untyped_defs = true
 allow_redefinition = true
 disallow_untyped_defs = true
+ignore_missing_imports = true
 
 [tool.ruff]
 exclude = [
@@ -79,9 +85,6 @@ indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
 docstring-code-format = false
-
-[tool.ruff.lint.per-file-ignores]
-"sudoku/__init__.py" = ["F401"]
 
 [build-system]
 requires = ["poetry-core"]

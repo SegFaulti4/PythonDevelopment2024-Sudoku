@@ -1,6 +1,6 @@
 python_bin := python3.10
 venv_bin := venv/bin
-modules := clients sudoku
+modules := sudoku_tui sudoku
 
 mypy_targets := $(addprefix mypy/,$(modules))
 ruff_targets := $(addprefix ruff/,$(modules))

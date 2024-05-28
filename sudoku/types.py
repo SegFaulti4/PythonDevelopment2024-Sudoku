@@ -43,12 +43,12 @@ class Pos:
     y: Num
 
 
-class Difficulty(enum.IntEnum):
+class Difficulty(str, enum.Enum):
     """Difficulty of game."""
 
-    Easy = 0
-    Medium = 1
-    Hard = 2
+    Easy = "Easy"
+    Medium = "Medium"
+    Hard = "Hard"
 
 
 T = TypeVar("T")
