@@ -21,7 +21,6 @@ class SudokuSession:
         """
         self.save = save
         self.data = data
-        self.win_flag = False
 
     @property
     def win(self) -> bool:
