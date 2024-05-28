@@ -189,6 +189,7 @@ class SudokuSession:
 
     save: SessionSave
     history: SessionHistory
+    win_flag: bool
 
     def __init__(self, save: SessionSave, history: SessionHistory) -> None:
         """Game initializer.
@@ -197,13 +198,21 @@ class SudokuSession:
         """
         self.save = save
         self.history = history
+        self.win_flag = False
+
+    def win(self) -> bool:
+        """Check is the game ended.
+
+        If True, no operation on session is valid except win()
+        """
+        return self.win_flag
 
     def undo(self) -> bool:
         """Undo last turn.
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.turn + len(self.history.boards) == 0:
+        if self.win_flag or self.history.turn + len(self.history.boards) == 0:
             return False
         self.history.turn -= 1
         return True
@@ -213,7 +222,7 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.turn == -1:
+        if self.win_flag or self.history.turn == -1:
             return False
         self.history.turn += 1
         return True
@@ -223,7 +232,7 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.initial[pos.x - 1][pos.y - 1]:
+        if self.win_flag or self.history.initial[pos.x - 1][pos.y - 1]:
             return False
         if self.history.turn != -1:
             del self.history.boards[self.history.turn + 1:]
@@ -234,6 +243,8 @@ class SudokuSession:
              else num
              for col in range(9)] for row in range(9)
         ])
+        if self.history.boards[self.history.turn] == self.history.full_board:
+            self.win_flag = True
         return True
 
     def del_num(self, pos: Pos) -> bool:
@@ -241,7 +252,7 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.history.initial[pos.x - 1][pos.y - 1] \
+        if self.win_flag or self.history.initial[pos.x - 1][pos.y - 1] \
                 or self.history.boards[self.history.turn][pos.x - 1][pos.y - 1] is None:
             return False
         if self.history.turn != -1:
@@ -258,6 +269,8 @@ class SudokuSession:
     def get_errors(self) -> BoardMask:
         """Get matrix of errors on board."""
         errors = [[False for __ in range(9)] for __ in range(9)]
+        if self.win_flag:
+            return errors
         board = self.history.boards[-1]
         # Check rows and cols
         for i in range(9):
@@ -342,10 +355,10 @@ class SudokuServer:
                     raise SudokuError("Malformed seed")
                 seed_nums = list(map(lambda x: ord(x) - ord('0') if x.isdigit() else ord(x) - ord('a') + 10,
                                      box_seed_str))
-                box_seed = sum((32**(3-i) * seed_nums[i]) for i in range(4))
+                box_seed = sum((32**(3 - i) * seed_nums[i]) for i in range(4))
                 numbers = list(range(1, 10))
                 for k in range(8, 0, -1):
-                    f[i + (8-k)//3, j + (8-k)%3] = numbers.pop(box_seed//factorial(k))
+                    f[i + (8 - k) // 3, j + (8 - k) % 3] = numbers.pop(box_seed // factorial(k))
                     box_seed = box_seed % factorial(k)
                 f[i + 2, j + 2] = numbers[0]
             for i, j in ((0, 6), (3, 0), (6, 3)):
@@ -358,7 +371,6 @@ class SudokuServer:
             if not is_correct(f):
                 raise SudokuError("Malformed seed")
             return [[Num(f[row][col]) for col in range(9)] for row in range(9)]
-
 
         # Creating 1, 5 and 9 boxes
         for i in (0, 3, 6):
@@ -396,15 +408,16 @@ class SudokuServer:
     @staticmethod
     def _solve(board: Board, difficulty: Difficulty) -> bool:
         marks = [[list(range(1, 10)) for j in range(9)] for i in range(9)]
+
         def unmark(i: int, j: int) -> None:
             val: int = cast(int, board[i][j])
-            for k in [*range(j)] + [*range(j+1, 9)]:
+            for k in [*range(j)] + [*range(j + 1, 9)]:
                 marks[i][k].remove(val) if val in marks[i][k] else None
-            for k in [*range(i)] + [*range(i+1, 9)]:
+            for k in [*range(i)] + [*range(i + 1, 9)]:
                 marks[k][j].remove(val) if val in marks[k][j] else None
             for k in range(9):
-                if val in marks[3*(i//3) + k//3][3*(j//3) + k%3]:
-                    marks[3*(i//3) + k//3][3*(j//3) + k%3].remove(val)
+                if val in marks[3 * (i // 3) + k // 3][3 * (j // 3) + k % 3]:
+                    marks[3 * (i // 3) + k // 3][3 * (j // 3) + k % 3].remove(val)
             marks[i][j] = []
 
         for i, j in ((x, y) for x in range(9) for y in range(9)):
@@ -438,11 +451,11 @@ class SudokuServer:
                                 unmark(i, col)
                                 changed = True
                 for bl in range(9):
-                    if sum(num in marks[3*(bl//3) + i//3][3*(bl%3) + i%3] for i in range(9)) == 1:
+                    if sum(num in marks[3 * (bl // 3) + i // 3][3 * (bl % 3) + i % 3] for i in range(9)) == 1:
                         for i in range(9):
-                            if num in marks[3*(bl//3) + i//3][3*(bl%3) + i%3]:
-                                board[3*(bl//3) + i//3][3*(bl%3) + i%3] = Num(num)
-                                unmark(3*(bl//3) + i//3, 3*(bl%3) + i%3)
+                            if num in marks[3 * (bl // 3) + i // 3][3 * (bl % 3) + i % 3]:
+                                board[3 * (bl // 3) + i // 3][3 * (bl % 3) + i % 3] = Num(num)
+                                unmark(3 * (bl // 3) + i // 3, 3 * (bl % 3) + i % 3)
                                 changed = True
 
         if all(map(all, board)):
@@ -466,7 +479,7 @@ class SudokuServer:
                 res += [True,]
             else:
                 raise SudokuError("Malformed seed")
-            return list(res[i:i+9] for i in range(0, 81, 9))
+            return list(res[i:i + 9] for i in range(0, 81, 9))
 
         samples: int = 0
         if difficulty == Difficulty.Easy:
@@ -490,11 +503,11 @@ class SudokuServer:
             flat_box = []
             for ii in range(3):
                 for jj in range(3):
-                    flat_box.append(board[i+ii][j+jj])
-            invs = [sum(map(lambda x: flat_box[k] > x, flat_box[k+1:])) for k in range(9)]
+                    flat_box.append(board[i + ii][j + jj])
+            invs = [sum(map(lambda x: flat_box[k] > x, flat_box[k + 1:])) for k in range(9)]
             box_seed = 0
             for k in range(9):
-                box_seed += invs[k] * factorial(8-k)
+                box_seed += invs[k] * factorial(8 - k)
             seed_digits = []
             for _ in range(4):
                 seed_digits.append(box_seed % 32)
@@ -506,7 +519,7 @@ class SudokuServer:
         cnt = 0
         for i in range(9):
             for j in range(9):
-                cur  = 2 * cur + initial[i][j]
+                cur = 2 * cur + initial[i][j]
                 cnt += 1
                 if cnt == 5:
                     seed += digits[cur]
@@ -515,7 +528,6 @@ class SudokuServer:
         if cnt != 0:
             seed += digits[cur]
         return seed
-
 
     @staticmethod
     def _generate_session_history(seed: str | None, difficulty: Difficulty) -> SessionHistory:
