@@ -1,7 +1,7 @@
 """Main game representation."""
 from itertools import permutations
 
-from sudoku.types import BoardMask, Num, Pos, SessionHistory, SessionSave
+from sudoku.types import BoardMask, Num, Pos, SessionData, SessionSave
 
 
 class SudokuSession:
@@ -12,15 +12,15 @@ class SudokuSession:
     """
 
     save: SessionSave
-    history: SessionHistory
+    data: SessionData
 
-    def __init__(self, save: SessionSave, history: SessionHistory) -> None:
+    def __init__(self, save: SessionSave, data: SessionData) -> None:
         """Game initializer.
 
         Computes random sudoku board, ready to game.
         """
         self.save = save
-        self.history = history
+        self.data = data
         self.win_flag = False
 
     @property
@@ -29,16 +29,16 @@ class SudokuSession:
 
         If True, no operation on session is valid except win()
         """
-        return self.history.boards[self.history.turn] == self.history.full_board
+        return self.data.boards[self.data.turn] == self.data.full_board
 
     def undo(self) -> bool:
         """Undo last turn.
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.win or self.history.turn + len(self.history.boards) == 0:
+        if self.win or self.data.turn + len(self.data.boards) == 0:
             return False
-        self.history.turn -= 1
+        self.data.turn -= 1
         return True
 
     def redo(self) -> bool:
@@ -46,9 +46,9 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.win or self.history.turn == -1:
+        if self.win or self.data.turn == -1:
             return False
-        self.history.turn += 1
+        self.data.turn += 1
         return True
 
     def set_num(self, pos: Pos, num: Num) -> bool:
@@ -56,13 +56,13 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.win or self.history.initial[pos.x - 1][pos.y - 1]:
+        if self.win or self.data.initial[pos.x - 1][pos.y - 1]:
             return False
-        if self.history.turn != -1:
-            del self.history.boards[self.history.turn + 1:]
-            self.history.turn = -1
-        self.history.boards.append([
-            [self.history.boards[self.history.turn][row][col]
+        if self.data.turn != -1:
+            del self.data.boards[self.data.turn + 1:]
+            self.data.turn = -1
+        self.data.boards.append([
+            [self.data.boards[self.data.turn][row][col]
              if pos.x - 1 != row or pos.y - 1 != col
              else num
              for col in range(9)] for row in range(9)
@@ -74,14 +74,14 @@ class SudokuSession:
 
         Returns: true if the turn was successful, false otherwise
         """
-        if self.win or self.history.initial[pos.x - 1][pos.y - 1] \
-                or self.history.boards[self.history.turn][pos.x - 1][pos.y - 1] is None:
+        if self.win or self.data.initial[pos.x - 1][pos.y - 1] \
+                or self.data.boards[self.data.turn][pos.x - 1][pos.y - 1] is None:
             return False
-        if self.history.turn != -1:
-            del self.history.boards[self.history.turn + 1:]
-            self.history.turn = -1
-        self.history.boards.append([
-            [self.history.boards[self.history.turn][row][col]
+        if self.data.turn != -1:
+            del self.data.boards[self.data.turn + 1:]
+            self.data.turn = -1
+        self.data.boards.append([
+            [self.data.boards[self.data.turn][row][col]
              if pos.x - 1 != row or pos.y - 1 != col
              else None
              for col in range(9)] for row in range(9)
@@ -93,7 +93,7 @@ class SudokuSession:
         errors = [[False for __ in range(9)] for __ in range(9)]
         if self.win:
             return errors
-        board = self.history.boards[self.history.turn]
+        board = self.data.boards[self.data.turn]
         # Check rows and cols
         for i in range(9):
             for j1, j2 in permutations(range(9), 2):
@@ -122,8 +122,8 @@ class SudokuSession:
 
     def get_initials(self) -> list[list[bool]]:
         """Get matrix of initials on board."""
-        return self.history.initial.copy()
+        return self.data.initial.copy()
 
     def get_board(self) -> list[list[Num | None]]:
         """Get matrix of board values."""
-        return self.history.boards[self.history.turn].copy()
+        return self.data.boards[self.data.turn].copy()

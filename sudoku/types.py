@@ -120,8 +120,8 @@ class SessionSave:
 
 
 @attrs.define(slots=True)
-class SessionHistory:
-    """Representation of one game history."""
+class SessionData:
+    """Representation of one game data."""
 
     full_board: FullBoard = attrs.field(validator=[_pv(_pred_9x9)])
     initial: BoardMask = attrs.field(validator=[_pv(_pred_9x9)])
@@ -129,12 +129,12 @@ class SessionHistory:
     turn: int
 
     @staticmethod
-    def _from_file(path: pathlib.Path) -> SessionHistory:
+    def _from_file(path: pathlib.Path) -> SessionData:
         try:
             with open(path, "r") as in_f:
                 data = json.load(in_f)
-            history = cattrs.structure(data, SessionHistory)
-            return history
+            data = cattrs.structure(data, SessionData)
+            return data
         except cattrs.errors.ClassValidationError as exc:
             LOG.warning(cattrs.transform_error(exc))
             raise SudokuFileError("Save field file corrupted", path=path)
@@ -149,4 +149,4 @@ class SessionHistory:
                 json.dump(data, out_f)
         except Exception as exc:
             LOG.warning(exc)
-            raise SudokuFileError("Failed to save session history file", path=path)
+            raise SudokuFileError("Failed to save session data file", path=path)
