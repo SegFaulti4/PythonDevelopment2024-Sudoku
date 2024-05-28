@@ -93,7 +93,7 @@ class SudokuSession:
         errors = [[False for __ in range(9)] for __ in range(9)]
         if self.win:
             return errors
-        board = self.history.boards[-1]
+        board = self.history.boards[self.history.turn]
         # Check rows and cols
         for i in range(9):
             for j1, j2 in permutations(range(9), 2):
