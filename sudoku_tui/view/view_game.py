@@ -30,7 +30,7 @@ class GameView(Frame):
     _UNDO_COMMAND = "u"
     _REDO_COMMAND = "r"
     _WIN_COMMAND = "win"
-    _DEL_NUM_CHAR = SudokuBoardWidget.UNSET_CELL
+    _DEL_NUM_CHAR = "0"
     _PROMPT_MAX_LEN = max(
         len(_UNDO_COMMAND),
         len(_REDO_COMMAND),
