@@ -562,9 +562,6 @@ class SudokuServer:
 
         Typically used in 'Save'.
         """
-        if session.win_flag:
-            self.delete_save(session.save)
-            return
         kwargs = attrs.asdict(session.save) | {"timestamp": datetime.datetime.now().isoformat()}
         new_save = SessionSave(**kwargs)
         session.save = new_save
