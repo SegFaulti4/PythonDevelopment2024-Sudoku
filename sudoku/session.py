@@ -89,7 +89,7 @@ class SudokuSession:
 
     def get_errors(self) -> BoardMask:
         """Get matrix of errors on board."""
-        errors = [[False for __ in range(9)] for __ in range(9)]
+        errors = [[False for _ in range(9)] for __ in range(9)]
         if self.win:
             return errors
         board = self.data.boards[self.data.turn]
