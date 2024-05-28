@@ -137,10 +137,10 @@ class SessionData:
             return data
         except cattrs.errors.ClassValidationError as exc:
             LOG.warning(cattrs.transform_error(exc))
-            raise SudokuFileError("Save field file corrupted", path=path)
+            raise SudokuFileError("Session data file corrupted", path=path)
         except Exception as exc:
             LOG.warning(exc)
-            raise SudokuFileError("Failed to read field file", path=path)
+            raise SudokuFileError("Failed to read session data file", path=path)
 
     def _save_as_file(self, path: pathlib.Path) -> None:
         data = attrs.asdict(self)
