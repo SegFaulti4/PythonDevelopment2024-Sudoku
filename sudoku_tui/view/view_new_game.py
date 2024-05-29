@@ -3,7 +3,7 @@ from asciimatics.exceptions import NextScene
 from asciimatics.screen import Screen
 from asciimatics.widgets import Button, Divider, Frame, Layout, ListBox, Text
 
-from sudoku_tui.model import SudokuModel, sudoku
+from sudoku_tui.model import SudokuModel, sudoku, translate
 from sudoku_tui.view.constants import GAME_VIEW_SCENE, START_VIEW_SCENE
 from sudoku_tui.view.view_game import GameView
 
@@ -22,7 +22,7 @@ class NewGameView(Frame):
         """Create new game page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=self.__scene_name__,
+            title=translate(model.locale, "New Game"),
             hover_focus=True,
             can_scroll=False,
             reduce_cpu=True,
@@ -30,14 +30,16 @@ class NewGameView(Frame):
         self.model = model
 
         difficulties: list[tuple[str, str]] = [(d, d) for d in sudoku.Difficulty]
-        self._name_widget = Text("Name:", "name")
+        self._name_widget = Text(translate(self.model.locale, "Name:"),
+                                 "name")
         self._difficulty_widget = ListBox(
             len(difficulties),
             difficulties,
             name="difficulty",
-            label="Difficulty:",
+            label=translate(self.model.locale, "Difficulty:"),
         )
-        self._seed_widget = Text("Seed:", "seed")
+        self._seed_widget = Text(translate(self.model.locale, "Seed:"),
+                                 "seed")
         main_layout = Layout([100], fill_frame=True)
 
         self.add_layout(main_layout)
@@ -51,8 +53,10 @@ class NewGameView(Frame):
 
         buttons_layout = Layout([1, 1])
         self.add_layout(buttons_layout)
-        buttons_layout.add_widget(Button("OK", self._ok_button_handler), 0)
-        buttons_layout.add_widget(Button("Cancel", self._cancel_button_handler), 1)
+        buttons_layout.add_widget(Button(translate(self.model.locale, "OK"),
+                                         self._ok_button_handler), 0)
+        buttons_layout.add_widget(Button(translate(self.model.locale, "Cancel"),
+                                         self._cancel_button_handler), 1)
         self.fix()
 
     def reset(self) -> None:

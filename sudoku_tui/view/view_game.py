@@ -5,7 +5,7 @@ from asciimatics.exceptions import NextScene
 from asciimatics.screen import Screen
 from asciimatics.widgets import Button, Divider, Frame, Layout, Text
 
-from sudoku_tui.model import ALL_NUMS, SudokuModel, sudoku
+from sudoku_tui.model import ALL_NUMS, SudokuModel, sudoku, translate
 from sudoku_tui.view.constants import START_VIEW_SCENE
 from sudoku_tui.view.widgets import CAKE, ColoredLabel, SudokuBoardWidget
 
@@ -13,7 +13,6 @@ from sudoku_tui.view.widgets import CAKE, ColoredLabel, SudokuBoardWidget
 class GameView(Frame):
     """Game session page."""
 
-    __scene_name__ = "Sudoku"
     model: SudokuModel
 
     _board_widget: SudokuBoardWidget
@@ -37,19 +36,12 @@ class GameView(Frame):
         len(_WIN_COMMAND),
         3  # set- and del- num commands
     )
-    _PROMPT_TIPS = [
-        "Command examples:",
-        ">> 123 # set [1][2] cell (1-based index) as 3",
-        f">> 12{_DEL_NUM_CHAR} # clear [1][2] cell",
-        f">> {_UNDO_COMMAND} # undo last change",
-        f">> {_REDO_COMMAND} # redo last change",
-    ]
 
     def __init__(self, screen: Screen, model: SudokuModel) -> None:
         """Create game session page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=self.__scene_name__,
+            title=translate(model.locale, "Sudoku"),
             hover_focus=True,
             can_scroll=False,
             reduce_cpu=True,
@@ -57,9 +49,18 @@ class GameView(Frame):
         self.model = model
         assert (self.model.session is not None)
 
+        prompt_tips = [
+            translate(self.model.locale, "Command examples:"),
+            translate(self.model.locale, ">> 123 # set [1][2] cell (1-based index) as 3"),
+            translate(self.model.locale, ">> 12{} # clear [1][2] cell").format(self._DEL_NUM_CHAR),
+            translate(self.model.locale, ">> {} # undo last change").format(self._UNDO_COMMAND),
+            translate(self.model.locale, ">> {} # redo last change").format(self._REDO_COMMAND),
+        ]
+
         board_layout = Layout([1, 1, 1], fill_frame=True)
         self._tips_widget = ColoredLabel(
-            "\n" + "\n".join(self._PROMPT_TIPS), height=2 + len(self._PROMPT_TIPS),
+            "\n" + "\n".join(prompt_tips),
+            height=2 + len(prompt_tips),
             foreground=Screen.COLOUR_DEFAULT,
         )
         self._board_widget = SudokuBoardWidget(
@@ -93,8 +94,10 @@ class GameView(Frame):
         div_layout.add_widget(Divider())
 
         bottom_layout = Layout([1, 1])
-        self._save_button = Button("Save", self._save_button_handler)
-        self._exit_button = Button("Leave", self._exit_button_handler)
+        self._save_button = Button(translate(self.model.locale, "Save"),
+                                   self._save_button_handler)
+        self._exit_button = Button(translate(self.model.locale, "Leave"),
+                                   self._exit_button_handler)
         self.add_layout(bottom_layout)
         bottom_layout.add_widget(self._save_button, 0)
         bottom_layout.add_widget(self._exit_button, 1)
@@ -144,7 +147,10 @@ class GameView(Frame):
             y = sudoku.Num(int(new[1]))
             num = sudoku.Num(int(new[2]))
         except Exception as exc:
-            self._log_widget.text = f"\nWrong set num command:\n{exc.args[0]}"
+            self._log_widget.text = translate(
+                self.model.locale,
+                "\nWrong set number command:\n{}"
+            ).format(exc.args[0])
         else:
             assert self.model.session is not None
             self.model.session.set_num(sudoku.Pos(x, y), num)
@@ -157,7 +163,10 @@ class GameView(Frame):
             x = sudoku.Num(int(new[0]))
             y = sudoku.Num(int(new[1]))
         except Exception as exc:
-            self._log_widget.text = f"\nWrong del num command:\n{exc.args[0]}"
+            self._log_widget.text = translate(
+                self.model.locale,
+                "\nWrong delete number command:\n{}"
+            ).format(exc.args[0])
         else:
             assert self.model.session is not None
             self.model.session.del_num(sudoku.Pos(x, y))
@@ -194,4 +203,5 @@ class GameView(Frame):
         if self.model.session.win:
             self._prompt_widget.disabled = True
             self._status_widget.text = CAKE
-            self._log_widget.text = "\nCommand prompt is disabled"
+            self._log_widget.text = translate(self.model.locale,
+                                              "\nCommand prompt is disabled")
