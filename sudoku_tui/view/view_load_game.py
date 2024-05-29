@@ -3,7 +3,7 @@ from asciimatics.exceptions import NextScene
 from asciimatics.screen import Screen
 from asciimatics.widgets import Button, Divider, Frame, Layout, MultiColumnListBox, Widget
 
-from sudoku_tui.model import SudokuModel, sudoku
+from sudoku_tui.model import SudokuModel, sudoku, translate
 from sudoku_tui.view.constants import GAME_VIEW_SCENE, START_VIEW_SCENE
 from sudoku_tui.view.view_game import GameView
 
@@ -11,7 +11,6 @@ from sudoku_tui.view.view_game import GameView
 class LoadGameView(Frame):
     """Game saves page."""
 
-    __scene_name__ = "Load Game"
     model: SudokuModel
 
     _list_widget: MultiColumnListBox
@@ -23,7 +22,7 @@ class LoadGameView(Frame):
         """Create game saves page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=self.__scene_name__,
+            title=translate(model.locale, "Load Game"),
             hover_focus=True,
             can_scroll=True,
             reduce_cpu=True,
@@ -38,9 +37,12 @@ class LoadGameView(Frame):
             on_change=self._on_pick,
             on_select=self._load_button_handler,
         )
-        self._load_button = Button("Load", self._load_button_handler)
-        self._delete_button = Button("Delete", self._delete_button_handler)
-        self._cancel_button = Button("Cancel", self._cancel_button_handler)
+        self._load_button = Button(translate(self.model.locale, "Load"),
+                                   self._load_button_handler)
+        self._delete_button = Button(translate(self.model.locale, "Delete"),
+                                     self._delete_button_handler)
+        self._cancel_button = Button(translate(self.model.locale, "Cancel"),
+                                     self._cancel_button_handler)
 
         main_layout = Layout([100], fill_frame=True)
         self.add_layout(main_layout)

@@ -3,8 +3,8 @@ from asciimatics.exceptions import NextScene, StopApplication
 from asciimatics.screen import Screen
 from asciimatics.widgets import Button, Frame, Layout
 
-from sudoku_tui.model import SudokuModel
-from sudoku_tui.view.constants import LOAD_GAME_VIEW_SCENE, NEW_GAME_VIEW_SCENE, START_VIEW_SCENE, SUDOKU_THEME
+from sudoku_tui.model import SudokuModel, translate
+from sudoku_tui.view.constants import LOAD_GAME_VIEW_SCENE, NEW_GAME_VIEW_SCENE, SUDOKU_THEME
 
 
 class StartView(Frame):
@@ -16,7 +16,7 @@ class StartView(Frame):
         """Create starting game page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=START_VIEW_SCENE,
+            title=translate(model.locale, "Main Menu"),
             hover_focus=True,
             can_scroll=False,
             reduce_cpu=True,
@@ -26,9 +26,12 @@ class StartView(Frame):
 
         layout = Layout([100], fill_frame=True)
         self.add_layout(layout)
-        layout.add_widget(Button("New Game", self._new_game, add_box=False))
-        layout.add_widget(Button("Load Game", self._load_game, add_box=False))
-        layout.add_widget(Button("Exit", self._exit, add_box=False))
+        layout.add_widget(Button(translate(self.model.locale, "New Game"),
+                                 self._new_game, add_box=False))
+        layout.add_widget(Button(translate(self.model.locale, "Load Game"),
+                                 self._load_game, add_box=False))
+        layout.add_widget(Button(translate(self.model.locale, "Exit"),
+                                 self._exit, add_box=False))
         self.fix()
 
     def _new_game(self) -> None:
