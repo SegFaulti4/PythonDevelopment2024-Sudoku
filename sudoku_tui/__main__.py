@@ -15,13 +15,13 @@ parser.add_argument("--locale", action="store", type=Locale,
                     required=False, default=Locale.EN)
 args = parser.parse_args()
 
-last_scene = None
-server = sudoku.SudokuServer()
-model = SudokuModel(server=server, locale=args.locale)
-scenes: list[Scene] = []
+_last_scene = None
+_server = sudoku.SudokuServer()
+_model = SudokuModel(server=_server, locale=args.locale)
+_scenes: list[Scene] = []
 while True:
     try:
-        Screen.wrapper(game, arguments=[scenes, last_scene, model])
+        Screen.wrapper(game, arguments=[_scenes, _last_scene, _model])
         sys.exit(0)
     except ResizeScreenError as e:
         _last_scene = e.scene

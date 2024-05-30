@@ -42,7 +42,10 @@ class SudokuBoardWidget(Label):
         self._text = self._board_repr(self.board)
 
     def update(self, frame_no: int = 0) -> None:
-        """Render board."""
+        """Render board.
+
+        :param frame_no: frame number
+        """
         self._text = self._board_repr(self.board)
 
         cell_idx = 0
@@ -108,7 +111,10 @@ class ColoredLabel(Label):
         self.background = background
 
     def update(self, frame_no: int) -> None:
-        """Render label."""
+        """Render label.
+
+        :param frame_no: frame number
+        """
         for i, text in enumerate(
                 _split_text(self._text, self._w, self._h, self._frame.canvas.unicode_aware)):
             self._frame.canvas.paint(

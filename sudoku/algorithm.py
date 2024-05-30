@@ -11,7 +11,10 @@ from sudoku.types import Board, BoardMask, Difficulty, FullBoard, Num
 
 
 def generate_full_board(seed: str | None) -> FullBoard:
-    """Generate full board."""
+    """Generate full board.
+
+    :param seed: RNG seed
+    """
     def is_correct(field: npt.NDArray[np.int_]) -> bool:
         r = bool(np.unique(field).size == 9 and np.all(np.unique(field) == np.arange(9) + 1)) and \
             all(np.all(np.unique(field[_i, :], return_counts=True)[1] == 1) for _i in range(9)) and \
@@ -85,6 +88,9 @@ def solve(board: Board, difficulty: Difficulty) -> bool:
 
     Solves board using methods with difficulty not higher than specified.
     Returns if the board solvable .
+
+    :param board: sudoku board to solve
+    :param difficulty: difficulty of this board
     """
     marks = [[list(range(1, 10)) for j in range(9)] for i in range(9)]
 
@@ -143,7 +149,12 @@ def solve(board: Board, difficulty: Difficulty) -> bool:
 
 
 def generate_initial_mask(board: FullBoard, seed: str | None, difficulty: Difficulty) -> BoardMask:
-    """Generate initial state of board."""
+    """Generate initial state of board.
+
+    :param board: sudoku board to generate initial state of
+    :param seed: RNG seed
+    :param difficulty: difficulty of generated state (determines the amount of empty cells in it)
+    """
     if seed is not None:
         *_, initial_seed = seed.split('-')
         if len(initial_seed) != 17:
@@ -176,7 +187,11 @@ def generate_initial_mask(board: FullBoard, seed: str | None, difficulty: Diffic
 
 
 def calculate_seed(board: FullBoard, initial: BoardMask) -> str:
-    """Calculate seed for given board and initial mask."""
+    """Calculate seed for given board and initial mask.
+
+    :param board: sudoku board to calculate seed for
+    :param initial: initial state of this board
+    """
     seed = ''
     digits = '0123456789abcdefghijklmnopqrstuvwxyz'
     for i, j in ((0, 0), (0, 3), (3, 3), (3, 6), (6, 0), (6, 6)):
