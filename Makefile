@@ -33,7 +33,7 @@ docs:
 $(pot_file): venv
 	pybabel extract --keywords=translate:2 $(tui_module) -o $(pot_file)
 
-$(po_file): $(pot_[file)
+$(po_file): $(pot_file)
 	mkdir -p $(po_dir)
 	touch $(po_file)
 	pybabel update --ignore-pot-creation-date -D $(tui_module) -i $(pot_file) -l $(po_locale) -d $(po_base)
