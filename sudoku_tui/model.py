@@ -25,7 +25,11 @@ LOCALES = {
 
 
 def translate(locale: Locale, text: str) -> str:
-    """Translate text according to current locale."""
+    """Translate text according to current locale.
+
+    :param locale: locale to translate to
+    :param text: text to translate
+    """
     return LOCALES[locale].gettext(text)
 
 

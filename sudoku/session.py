@@ -18,6 +18,9 @@ class SudokuSession:
         """Game initializer.
 
         Computes random sudoku board, ready to game.
+
+        :param save: save of this session
+        :param data: data of this session
         """
         self.save = save
         self.data = data
@@ -54,6 +57,9 @@ class SudokuSession:
         """Set the point at 'pos' value to 'num'.
 
         Returns: true if the turn was successful, false otherwise
+
+        :param pos: cell position to set number for
+        :param num: number to set
         """
         if self.win or self.data.initial[pos.x - 1][pos.y - 1]:
             return False
@@ -72,6 +78,8 @@ class SudokuSession:
         """Unset the point at 'pos'.
 
         Returns: true if the turn was successful, false otherwise
+
+        :param pos: cell position to unset number for
         """
         if self.win or self.data.initial[pos.x - 1][pos.y - 1] \
                 or self.data.boards[self.data.turn][pos.x - 1][pos.y - 1] is None:

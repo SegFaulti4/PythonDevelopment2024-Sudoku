@@ -51,6 +51,10 @@ class SudokuServer:
         """Generate session.
 
         Typically used in 'New Game'.
+
+        :param name: session name
+        :param seed: RNG seed
+        :param difficulty: difficulty of the session
         """
         data = SudokuServer._generate_session_data(seed=seed, difficulty=difficulty)
         if seed is None:
@@ -65,6 +69,8 @@ class SudokuServer:
         """Save session for further gaming.
 
         Typically used in 'Save'.
+
+        :param session: session to save
         """
         kwargs = attrs.asdict(session.save) | {"timestamp": datetime.datetime.now().isoformat()}
         new_save = SessionSave(**kwargs)
@@ -87,6 +93,8 @@ class SudokuServer:
         """Delete save.
 
         Completely deletes save. It cannot be restored in any way.
+
+        :param save: save to delete
         """
         self._session_data_path(save.session_id).unlink()
         self._session_save_path(save.session_id).unlink()
@@ -95,6 +103,8 @@ class SudokuServer:
         """Load session from save.
 
         Typically used in some kind of 'Continue' menu.
+
+        :param save: save to load
         """
         path = self._session_data_path(save.session_id)
         # noinspection PyProtectedMember
