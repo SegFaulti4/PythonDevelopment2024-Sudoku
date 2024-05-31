@@ -1,6 +1,6 @@
 python_bin := python3.10
 tui_module := sudoku_tui
-modules := $(tui_module) sudoku
+modules := $(tui_module) sudoku tests
 
 po_base := po
 po_locale := ru_RU.UTF-8
@@ -30,6 +30,9 @@ locale: $(mo_file)
 docs:
 	$(MAKE) -C docs html
 
+tests: venv
+	. $(venv_bin)/activate && python -m unittest tests/server_test.py
+
 $(pot_file): venv
 	pybabel extract --keywords=translate:2 $(tui_module) -o $(pot_file)
 
@@ -58,4 +61,4 @@ _check_poetry:
 
 
 .SILENT: _check_poetry
-.PHONY: all mypy ruff ruff-fix locale docs _check_poetry $(mypy_targets) $(ruff_targets) $(ruff_fix_targets) pot_file
+.PHONY: all mypy ruff ruff-fix locale docs tests _check_poetry $(mypy_targets) $(ruff_targets) $(ruff_fix_targets) pot_file
