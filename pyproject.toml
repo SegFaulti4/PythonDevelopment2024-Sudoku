@@ -3,13 +3,17 @@ name = "PythonDevelopment2024-Sudoku"
 version = "0.0.0"
 description = ""
 authors = [
-    #"SegFaulti4 makar.popov01@mail.ru",
-    #"Winking-maniac gkgim@yandex.ru",
+    "SegFaulti4 <makar.popov01@mail.ru>",
+    "Winking-maniac <gkgim@yandex.ru>",
 ]
 readme = "README.md"
 packages = [
-    {include = "./sudoku"},
-    {include = "./sudoku_tui"}
+    { include = "./sudoku" },
+    { include = "./sudoku_tui" },
+]
+include = [
+    { path = "docs/_build/html/*" },
+    { path = "po/*/LC_MESSAGES/*.mo" },
 ]
 
 [tool.poetry.dependencies]

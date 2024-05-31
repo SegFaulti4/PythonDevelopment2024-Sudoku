@@ -19,6 +19,11 @@ venv_bin := $(venv_target)/bin
 all: venv pyproject.toml _check_poetry
 	. $(venv_bin)/activate && poetry install
 
+build: docs locale
+	poetry build
+
+check: mypy ruff tests
+
 mypy: $(mypy_targets)
 
 ruff: $(ruff_targets)
@@ -28,7 +33,7 @@ ruff-fix: $(ruff_fix_targets)
 locale: $(mo_file)
 
 docs:
-	$(MAKE) -C docs html
+	. $(venv_bin)/activate && $(MAKE) -C docs html
 
 tests: venv
 	. $(venv_bin)/activate && python -m unittest tests/server_test.py
@@ -39,7 +44,7 @@ $(pot_file): venv
 $(po_file): $(pot_file)
 	mkdir -p $(po_dir)
 	touch $(po_file)
-	pybabel update --ignore-pot-creation-date -D $(tui_module) -i $(pot_file) -l $(po_locale) -d $(po_base)
+	pybabel update -D $(tui_module) -i $(pot_file) -l $(po_locale) -d $(po_base)
 
 $(mo_file): $(po_file)
 	pybabel compile -f -D $(tui_module) -l $(po_locale) -d $(po_base)
@@ -61,4 +66,4 @@ _check_poetry:
 
 
 .SILENT: _check_poetry
-.PHONY: all mypy ruff ruff-fix locale docs tests _check_poetry $(mypy_targets) $(ruff_targets) $(ruff_fix_targets) pot_file
+.PHONY: all check build mypy ruff ruff-fix locale docs tests _check_poetry $(mypy_targets) $(ruff_targets) $(ruff_fix_targets) pot_file
