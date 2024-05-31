@@ -9,6 +9,8 @@ class TestSudokuServer(unittest.TestCase):
 
     def setUp(self) -> None:
         self.server = sudoku.SudokuServer()
+
+    def tearDown(self):
         for save in self.server.list_saves():
             self.server.delete_save(save)
 
