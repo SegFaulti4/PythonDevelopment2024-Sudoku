@@ -22,7 +22,7 @@ class LoadGameView(Frame):
         """Create game saves page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=translate(model.locale, "Load Game"),
+            title=translate("Load Game"),
             hover_focus=True,
             can_scroll=True,
             reduce_cpu=True,
@@ -37,11 +37,11 @@ class LoadGameView(Frame):
             on_change=self._on_pick,
             on_select=self._load_button_handler,
         )
-        self._load_button = Button(translate(self.model.locale, "Load"),
+        self._load_button = Button(translate("Load"),
                                    self._load_button_handler)
-        self._delete_button = Button(translate(self.model.locale, "Delete"),
+        self._delete_button = Button(translate("Delete"),
                                      self._delete_button_handler)
-        self._cancel_button = Button(translate(self.model.locale, "Cancel"),
+        self._cancel_button = Button(translate("Cancel"),
                                      self._cancel_button_handler)
 
         main_layout = Layout([100], fill_frame=True)

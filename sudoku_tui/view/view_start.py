@@ -16,7 +16,7 @@ class StartView(Frame):
         """Create starting game page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=translate(model.locale, "Main Menu"),
+            title=translate("Main Menu"),
             hover_focus=True,
             can_scroll=False,
             reduce_cpu=True,
@@ -26,11 +26,11 @@ class StartView(Frame):
 
         layout = Layout([100], fill_frame=True)
         self.add_layout(layout)
-        layout.add_widget(Button(translate(self.model.locale, "New Game"),
+        layout.add_widget(Button(translate("New Game"),
                                  self._new_game, add_box=False))
-        layout.add_widget(Button(translate(self.model.locale, "Load Game"),
+        layout.add_widget(Button(translate("Load Game"),
                                  self._load_game, add_box=False))
-        layout.add_widget(Button(translate(self.model.locale, "Exit"),
+        layout.add_widget(Button(translate("Exit"),
                                  self._exit, add_box=False))
         self.fix()
 

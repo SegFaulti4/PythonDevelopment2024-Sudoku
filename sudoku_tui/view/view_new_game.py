@@ -22,7 +22,7 @@ class NewGameView(Frame):
         """Create new game page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=translate(model.locale, "New Game"),
+            title=translate("New Game"),
             hover_focus=True,
             can_scroll=False,
             reduce_cpu=True,
@@ -30,15 +30,15 @@ class NewGameView(Frame):
         self.model = model
 
         difficulties: list[tuple[str, str]] = [(d, d) for d in sudoku.Difficulty]
-        self._name_widget = Text(translate(self.model.locale, "Name:"),
+        self._name_widget = Text(translate("Name:"),
                                  "name")
         self._difficulty_widget = ListBox(
             len(difficulties),
             difficulties,
             name="difficulty",
-            label=translate(self.model.locale, "Difficulty:"),
+            label=translate("Difficulty:"),
         )
-        self._seed_widget = Text(translate(self.model.locale, "Seed:"),
+        self._seed_widget = Text(translate("Seed:"),
                                  "seed")
         main_layout = Layout([100], fill_frame=True)
 
@@ -53,9 +53,9 @@ class NewGameView(Frame):
 
         buttons_layout = Layout([1, 1])
         self.add_layout(buttons_layout)
-        buttons_layout.add_widget(Button(translate(self.model.locale, "OK"),
+        buttons_layout.add_widget(Button(translate("OK"),
                                          self._ok_button_handler), 0)
-        buttons_layout.add_widget(Button(translate(self.model.locale, "Cancel"),
+        buttons_layout.add_widget(Button(translate("Cancel"),
                                          self._cancel_button_handler), 1)
         self.fix()
 

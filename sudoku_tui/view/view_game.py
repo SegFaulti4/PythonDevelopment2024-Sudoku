@@ -41,7 +41,7 @@ class GameView(Frame):
         """Create game session page with existing model."""
         super().__init__(
             screen, screen.height, screen.width,
-            title=translate(model.locale, "Sudoku"),
+            title=translate("Sudoku"),
             hover_focus=True,
             can_scroll=False,
             reduce_cpu=True,
@@ -50,11 +50,11 @@ class GameView(Frame):
         assert (self.model.session is not None)
 
         prompt_tips = [
-            translate(self.model.locale, "Command examples:"),
-            translate(self.model.locale, ">> 123 # set [1][2] cell (1-based index) as 3"),
-            translate(self.model.locale, ">> 12{} # clear [1][2] cell").format(self._DEL_NUM_CHAR),
-            translate(self.model.locale, ">> {} # undo last change").format(self._UNDO_COMMAND),
-            translate(self.model.locale, ">> {} # redo last change").format(self._REDO_COMMAND),
+            translate("Command examples:"),
+            translate(">> 123 # set [1][2] cell (1-based index) as 3"),
+            translate(">> 12{} # clear [1][2] cell").format(self._DEL_NUM_CHAR),
+            translate(">> {} # undo last change").format(self._UNDO_COMMAND),
+            translate(">> {} # redo last change").format(self._REDO_COMMAND),
         ]
 
         board_layout = Layout([1, 1, 1], fill_frame=True)
@@ -94,9 +94,9 @@ class GameView(Frame):
         div_layout.add_widget(Divider())
 
         bottom_layout = Layout([1, 1])
-        self._save_button = Button(translate(self.model.locale, "Save"),
+        self._save_button = Button(translate("Save"),
                                    self._save_button_handler)
-        self._exit_button = Button(translate(self.model.locale, "Leave"),
+        self._exit_button = Button(translate("Leave"),
                                    self._exit_button_handler)
         self.add_layout(bottom_layout)
         bottom_layout.add_widget(self._save_button, 0)
@@ -148,7 +148,6 @@ class GameView(Frame):
             num = sudoku.Num(int(new[2]))
         except Exception as exc:
             self._log_widget.text = translate(
-                self.model.locale,
                 "\nWrong set number command:\n{}"
             ).format(exc.args[0])
         else:
@@ -164,7 +163,6 @@ class GameView(Frame):
             y = sudoku.Num(int(new[1]))
         except Exception as exc:
             self._log_widget.text = translate(
-                self.model.locale,
                 "\nWrong delete number command:\n{}"
             ).format(exc.args[0])
         else:
@@ -203,5 +201,4 @@ class GameView(Frame):
         if self.model.session.win:
             self._prompt_widget.disabled = True
             self._status_widget.text = CAKE
-            self._log_widget.text = translate(self.model.locale,
-                                              "\nCommand prompt is disabled")
+            self._log_widget.text = translate("\nCommand prompt is disabled")
