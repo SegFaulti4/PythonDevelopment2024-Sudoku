@@ -1,14 +1,12 @@
 import unittest
-import sys
 from itertools import permutations, product
 
-sys.path.append("..")
 import sudoku
 from sudoku import Num, Pos
 
 
 class TestSudokuServer(unittest.TestCase):
-    
+
     def setUp(self) -> None:
         self.server = sudoku.SudokuServer()
         for save in self.server.list_saves():
@@ -57,11 +55,11 @@ class TestSudokuServer(unittest.TestCase):
         session = self.server.generate_session("test_undo_redo")
         for i, j in product(range(1, 10), repeat=2):
             self.assertNotEqual(session.set_num(Pos(Num(i), Num(j)), Num(1)), session.data.initial[i - 1][j - 1])
-        self.assertTrue(all(session.get_board()))
+        self.assertTrue(all(row) for row in session.get_board())
         for i, j in product(range(1, 10), repeat=2):
             self.assertNotEqual(session.del_num(Pos(Num(i), Num(j))), session.data.initial[i - 1][j - 1])
         self.assertTrue(all((session.get_board()[i][j] is not None) == session.data.initial[i][j]
-                for i in range(9) for j in range(9)))
+                            for i in range(9) for j in range(9)))
 
     def test_seed(self) -> None:
         s1 = self.server.generate_session("test_seed_1")
