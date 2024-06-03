@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "PythonDevelopment2024-Sudoku"
-version = "0.0.0"
+version = "0.0.1"
 description = ""
 authors = [
     "SegFaulti4 <makar.popov01@mail.ru>",
